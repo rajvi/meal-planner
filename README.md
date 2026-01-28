@@ -8,7 +8,7 @@ An open-source plant-based meal planning app focused on hitting daily nutritiona
 - Supabase (Auth + Postgres)
 
 ## Status
-🚧 MVP in progress
+🔨 MVP in progress
 
 ## License
 AGPL-3.0
