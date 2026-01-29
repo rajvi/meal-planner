@@ -12,15 +12,29 @@ export default function SignIn() {
   ) => {
     e.preventDefault();
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error) {
-      alert(error.message);
-    } else {
-      navigate("/dashboard");
+    if (authError) {
+      alert(authError.message);
+      return;
+    }
+
+    if (authData.session) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('profile_complete')
+        .eq('id', authData.session.user.id)
+        .maybeSingle(); // Use maybeSingle to avoid 406 error if row doesn't exist
+
+      if (profile && profile.profile_complete) {
+        navigate("/dashboard");
+      } else {
+        // If profile is missing (null) or intake incomplete -> Redirect to Intake
+        navigate("/intake");
+      }
     }
   };
 

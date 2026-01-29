@@ -3,12 +3,13 @@ import { useAuth } from "./hooks/useAuth"
 import SignIn from "./components/Signin"
 import SignUp from "./components/Signup"
 import Dashboard from "./components/Dashboard"
+import Intake from "./components/Intake"
 
 export default function App() {
-  const { session } = useAuth()
+  const { session, loading } = useAuth()
 
   // While Supabase checks for a session
-  if (session === undefined) {
+  if (loading) {
     return <div>Loading…</div>
   }
 
@@ -28,6 +29,10 @@ export default function App() {
       <Route
         path="/dashboard"
         element={session ? <Dashboard /> : <Navigate to="/signin" replace />}
+      />
+      <Route
+        path="/intake"
+        element={session ? <Intake /> : <Navigate to="/signin" replace />}
       />
 
       {/* Catch‑all redirect */}

@@ -7,11 +7,11 @@ export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!user) {
-      navigate("/signin");
-    }
-  }, [user]);
+  // useEffect(() => {
+  //   if (!user) {
+  //     navigate("/signin");
+  //   }
+  // }, [user]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
