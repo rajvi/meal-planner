@@ -1,4 +1,5 @@
 -- Run in Supabase SQL Editor
+
 -- 1. Profiles: Basic physical data
 CREATE TABLE profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
@@ -6,6 +7,8 @@ CREATE TABLE profiles (
   username TEXT UNIQUE,
   first_name TEXT,
   last_name TEXT,
+  sex TEXT,
+  age INTEGER,
   height_cm FLOAT,
   weight_kg FLOAT,
   activity_level TEXT CHECK (activity_level IN ('sedentary', 'lightly_active', 'moderately_active', 'very_active', 'extra_active')),
@@ -43,23 +46,42 @@ CREATE TABLE meal_plans (
 -- Enable Row Level Security (should already be enabled, but good to ensure)
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
--- Policy 1: Allow users to insert their OWN profile
+-- Policy: Allow users to insert their OWN profile
 -- This matches the 'auth.uid() = id' check
 CREATE POLICY "Users can insert their own profile" 
 ON profiles 
 FOR INSERT 
 WITH CHECK ( auth.uid() = id );
 
--- Policy 2: Allow users to update their OWN profile
+-- Policy: Allow users to update their OWN profile
 CREATE POLICY "Users can update their own profile" 
 ON profiles 
 FOR UPDATE 
 USING ( auth.uid() = id );
 
--- Policy 3: Allow users to select (read) their OWN profile
+-- Policy: Allow users to select (read) their OWN profile
 CREATE POLICY "Users can view their own profile" 
 ON profiles 
 FOR SELECT 
 USING ( auth.uid() = id );
+
+-- Enable RLS for daily_targets
+ALTER TABLE daily_targets ENABLE ROW LEVEL SECURITY;
+
+-- Allow users to insert their OWN daily targets (matches user_id)
+CREATE POLICY "Users can insert their own daily targets"
+ON daily_targets FOR INSERT
+WITH CHECK ( auth.uid() = user_id );
+
+-- Allow users to update their OWN daily targets
+CREATE POLICY "Users can update their own daily targets"
+ON daily_targets FOR UPDATE
+USING ( auth.uid() = user_id );
+
+-- Allow users to select (read) their OWN daily targets
+CREATE POLICY "Users can view their own daily targets"
+ON daily_targets FOR SELECT
+USING ( auth.uid() = user_id );
+
 
 -- Optional: If you need to verify it worked, you can't really "verify" RLS easily without trying to insert again from the app.
