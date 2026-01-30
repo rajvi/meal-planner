@@ -34,9 +34,9 @@ Calculations are based on the **Mifflin-St Jeor Equation** for BMR and standard 
 - Maintenance: 0 kcal
 
 **Macronutrients:**
-- Protein: 25%
-- Fat: 30%
-- Carbohydrates: 45%
+- Protein: 0.8g - 1.4g per kg bodyweight (Based on Activity/Goal)
+- Fat: 30% of Total Calories
+- Carbohydrates: Remainder of Calories
 
 **Micronutrients:**
 - Iron: 8mg (Male), 18mg (Female)
