@@ -13,6 +13,8 @@ export default function Intake() {
         username: "",
         firstName: "",
         lastName: "",
+        age: "",
+        sex: "",
         heightFt: "",
         heightIn: "",
         weightLbs: "",
@@ -44,13 +46,16 @@ export default function Intake() {
             const heightCm =
                 ((parseInt(formData.heightFt) * 12) + parseInt(formData.heightIn)) * 2.54;
             const weightKg = parseFloat(formData.weightLbs) * 0.453592;
+            const age = parseInt(formData.age);
 
-            // 2. Prepare Payload
-            const updates = {
+            // 2. Prepare Profile Payload
+            const profileUpdates = {
                 id: user.id,
                 username: formData.username,
                 first_name: formData.firstName,
                 last_name: formData.lastName,
+                age: age,
+                sex: formData.sex,
                 height_cm: heightCm,
                 weight_kg: weightKg,
                 activity_level: formData.activityLevel,
@@ -60,14 +65,79 @@ export default function Intake() {
                 updated_at: new Date(),
             };
 
-            // 3. Submit to Supabase
-            const { error } = await supabase.from("profiles").upsert(updates);
+            // 3. Submit Profile to Supabase
+            const { error: profileError } = await supabase.from("profiles").upsert(profileUpdates);
 
-            if (error) {
-                throw error;
+            if (profileError) {
+                throw profileError;
             }
 
-            // 4. Redirect
+            // 4. Calculate Nutrition (Daily Targets)
+
+            // BMR (Mifflin-St Jeor)
+            let bmr;
+            if (formData.sex === "male") {
+                bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
+            } else {
+                bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
+            }
+
+            // TDEE
+            const activityMultipliers: { [key: string]: number } = {
+                sedentary: 1.2,
+                lightly_active: 1.375,
+                moderately_active: 1.55,
+                very_active: 1.725,
+                extra_active: 1.9,
+            };
+
+            // Default to 1.2 if not found
+            const tdee = bmr * (activityMultipliers[formData.activityLevel] || 1.2);
+
+            // Goal Adjustment
+            let targetCalories = tdee;
+            if (formData.fitnessGoal === "weight_loss") {
+                targetCalories -= 500;
+            } else if (formData.fitnessGoal === "muscle_gain") {
+                targetCalories += 250;
+            }
+            // maintenance is 0
+
+            // Round calories
+            targetCalories = Math.round(targetCalories);
+
+            // Macros (Simplified 25% Protein, 30% Fat, 45% Carbs)
+            // Protein 4kcal/g, Fat 9kcal/g, Carbs 4kcal/g
+            const proteinG = Math.round((targetCalories * 0.25) / 4);
+            const fatG = Math.round((targetCalories * 0.30) / 9);
+            const carbsG = Math.round((targetCalories * 0.45) / 4);
+
+            // Micros
+            const ironMg = formData.sex === "male" ? 8 : 18;
+            const calciumMg = 1000;
+            const vitaminB12Mcg = 2.4;
+
+            const dailyTargets = {
+                user_id: user.id,
+                calories_kcal: targetCalories,
+                protein_g: proteinG,
+                fat_g: fatG,
+                carbs_g: carbsG,
+                iron_mg: ironMg,
+                vitamin_b12_mcg: vitaminB12Mcg,
+                calcium_mg: calciumMg,
+                updated_at: new Date(),
+            };
+
+            // 5. Submit Daily Targets
+            const { error: targetsError } = await supabase.from("daily_targets").upsert(dailyTargets);
+
+            if (targetsError) {
+                console.error("Error saving daily targets:", targetsError);
+                // Optionally alert, but we can still proceed to dashboard
+            }
+
+            // 6. Redirect
             navigate("/dashboard");
         } catch (error: any) {
             alert(error.message || "Error updating profile");
@@ -149,6 +219,41 @@ export default function Intake() {
                                         onChange={handleChange}
                                         className="input block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border"
                                     />
+                                </div>
+                            </div>
+
+                            <div className="sm:col-span-3">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Age
+                                </label>
+                                <div className="mt-1">
+                                    <input
+                                        type="number"
+                                        name="age"
+                                        required
+                                        min="1"
+                                        max="120"
+                                        value={formData.age}
+                                        onChange={handleChange}
+                                        className="input block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="sm:col-span-3">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Sex
+                                </label>
+                                <div className="mt-1">
+                                    <select
+                                        name="sex"
+                                        value={formData.sex}
+                                        onChange={handleChange}
+                                        className="input block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border"
+                                    >
+                                        <option value="female">Female</option>
+                                        <option value="male">Male</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
