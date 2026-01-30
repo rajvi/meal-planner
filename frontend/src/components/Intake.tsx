@@ -106,11 +106,28 @@ export default function Intake() {
             // Round calories
             targetCalories = Math.round(targetCalories);
 
-            // Macros (Simplified 25% Protein, 30% Fat, 45% Carbs)
-            // Protein 4kcal/g, Fat 9kcal/g, Carbs 4kcal/g
-            const proteinG = Math.round((targetCalories * 0.25) / 4);
+            // Macros
+            // Protein: Based on body weight (USDA DRI is 0.8g/kg, scaled up for activity/goals)
+            let proteinMultiplier = 0.8; // Base (Sedentary/Light)
+
+            if (formData.activityLevel === "moderately_active") {
+                proteinMultiplier = 1.0;
+            } else if (["very_active", "extra_active"].includes(formData.activityLevel)) {
+                proteinMultiplier = 1.2;
+            }
+
+            if (formData.fitnessGoal === "muscle_gain") {
+                proteinMultiplier += 0.2;
+            }
+
+            const proteinG = Math.round(weightKg * proteinMultiplier);
+
+            // Fat: 30% of Total Calories
             const fatG = Math.round((targetCalories * 0.30) / 9);
-            const carbsG = Math.round((targetCalories * 0.45) / 4);
+
+            // Carbs: Remainder of calories
+            const remainingCalories = targetCalories - (proteinG * 4) - (fatG * 9);
+            const carbsG = Math.max(0, Math.round(remainingCalories / 4));
 
             // Micros
             const ironMg = formData.sex === "male" ? 8 : 18;
@@ -386,7 +403,7 @@ export default function Intake() {
                                     <textarea
                                         name="allergies"
                                         rows={3}
-                                        placeholder="Peanuts, Shellfish, Dairy, etc. (Leave empty if none)"
+                                        placeholder="Peanuts, Gluten, etc. (Leave empty if none)"
                                         value={formData.allergies}
                                         onChange={handleChange}
                                         className="input block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border"
