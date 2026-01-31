@@ -18,7 +18,7 @@ export default function Intake() {
         heightFt: "",
         heightIn: "",
         weightLbs: "",
-        activityLevel: "lightly_active", // Default
+        activityLevel: "inactive", // Default
         fitnessGoal: "maintenance", // Default
         cookingTime: "<30 min", // Default
         allergies: "",
@@ -74,28 +74,36 @@ export default function Intake() {
 
             // 4. Calculate Nutrition (Daily Targets)
 
-            // BMR (Mifflin-St Jeor)
-            let bmr;
+            // IOM EER Equation (Used by USDA DRI)
+            // Men: 662 - 9.53*Age + PA*(15.91*Weight + 539.6*Height)
+            // Women: 354 - 6.91*Age + PA*(9.36*Weight + 726*Height)
+
+            const heightM = heightCm / 100;
+            let eer;
+            let pa = 1.0; // Physical Activity Coefficient
+
+            // Determine PA
             if (formData.sex === "male") {
-                bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
+                if (formData.activityLevel === "inactive") pa = 1.0;
+                else if (formData.activityLevel === "low_active") pa = 1.11;
+                else if (formData.activityLevel === "active") pa = 1.25;
+                else if (formData.activityLevel === "very_active") pa = 1.48;
             } else {
-                bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
+                if (formData.activityLevel === "inactive") pa = 1.0;
+                else if (formData.activityLevel === "low_active") pa = 1.12;
+                else if (formData.activityLevel === "active") pa = 1.27;
+                else if (formData.activityLevel === "very_active") pa = 1.45;
             }
 
-            // TDEE
-            const activityMultipliers: { [key: string]: number } = {
-                sedentary: 1.2,
-                lightly_active: 1.375,
-                moderately_active: 1.55,
-                very_active: 1.725,
-                extra_active: 1.9,
-            };
-
-            // Default to 1.2 if not found
-            const tdee = bmr * (activityMultipliers[formData.activityLevel] || 1.2);
+            // Calculate EER
+            if (formData.sex === "male") {
+                eer = 662 - (9.53 * age) + pa * (15.91 * weightKg + 539.6 * heightM);
+            } else {
+                eer = 354 - (6.91 * age) + pa * (9.36 * weightKg + 726 * heightM);
+            }
 
             // Goal Adjustment
-            let targetCalories = tdee;
+            let targetCalories = eer;
             if (formData.fitnessGoal === "weight_loss") {
                 targetCalories -= 500;
             } else if (formData.fitnessGoal === "muscle_gain") {
@@ -110,9 +118,12 @@ export default function Intake() {
             // Protein: Based on body weight (USDA DRI is 0.8g/kg, scaled up for activity/goals)
             let proteinMultiplier = 0.8; // Base (Sedentary/Light)
 
-            if (formData.activityLevel === "moderately_active") {
+            if (["active", "very_active"].includes(formData.activityLevel)) {
                 proteinMultiplier = 1.0;
-            } else if (["very_active", "extra_active"].includes(formData.activityLevel)) {
+            }
+            // Increase slightly closer to 1.2 if extremely active, but USDA baseline is conservative.
+            // Keeping simple mapping for now.
+            if (formData.activityLevel === "very_active") {
                 proteinMultiplier = 1.2;
             }
 
@@ -352,9 +363,10 @@ export default function Intake() {
                                         onChange={handleChange}
                                         className="input block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white p-2 border"
                                     >
-                                        <option value="lightly_active">Light Movement (Sedentary/Office job)</option>
-                                        <option value="moderately_active">Active (Regular exercise)</option>
-                                        <option value="very_active">Athlete (Intense daily exercise)</option>
+                                        <option value="inactive">Inactive (Little or no exercise)</option>
+                                        <option value="low_active">Low Active (Light exercise/sports 1-3 days/week)</option>
+                                        <option value="active">Active (Moderate exercise/sports 3-5 days/week)</option>
+                                        <option value="very_active">Very Active (Hard exercise/sports 6-7 days/week)</option>
                                     </select>
                                 </div>
                             </div>
