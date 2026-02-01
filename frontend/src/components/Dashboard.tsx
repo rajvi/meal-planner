@@ -13,39 +13,67 @@ interface DailyTargets {
   calcium_mg: number;
 }
 
+interface MealPlanItem {
+  id: string;
+  day_of_week: number; // 0=Sun
+  meal_type: string;
+  recipe_title: string;
+  calories: number;
+  protein_g: number;
+  image_url: string;
+  ready_in_minutes: number;
+  servings: number;
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [targets, setTargets] = useState<DailyTargets | null>(null);
   const [loadingTargets, setLoadingTargets] = useState(true);
 
+  // Meal Plan State
+  const [mealPlan, setMealPlan] = useState<MealPlanItem[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const [selectedMeal, setSelectedMeal] = useState<MealPlanItem | null>(null); // For detailed view
+
   useEffect(() => {
     if (!user) return;
 
-    const fetchTargets = async () => {
+    const fetchData = async () => {
+      setLoadingTargets(true);
       try {
-        const { data, error } = await supabase
+        // 1. Fetch Targets
+        const { data: targetData, error: targetError } = await supabase
           .from("daily_targets")
           .select("*")
           .eq("user_id", user.id)
           .single();
 
-        if (error && error.code !== "PGRST116") {
-          // PGRST116 is "Row not found", which might happen if calculation failed or not done.
-          console.error(error);
+        if (targetError && targetError.code !== "PGRST116") {
+          console.error(targetError);
         }
+        if (targetData) setTargets(targetData);
 
-        if (data) {
-          setTargets(data);
+        // 2. Fetch Meal Plan
+        const { data: planData, error: planError } = await supabase
+          .from("meal_plans")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("day_of_week", { ascending: true });
+
+        if (planError) {
+          console.error(planError);
         }
+        if (planData) setMealPlan(planData);
+
       } catch (error) {
-        console.error("Error fetching targets:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setLoadingTargets(false);
       }
     };
 
-    fetchTargets();
+    fetchData();
   }, [user]);
 
   const handleLogout = async () => {
@@ -53,10 +81,47 @@ export default function Dashboard() {
     navigate("/signin");
   };
 
+  const handleGeneratePlan = async () => {
+    if (!user) return;
+    setGenerating(true);
+    try {
+      // Call Backend API
+      const response = await fetch(`http://127.0.0.1:8000/api/generate-plan/${user.id}`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate plan");
+      }
+
+      // Refresh Plan from DB
+      const { data: planData, error: planError } = await supabase
+        .from("meal_plans")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("day_of_week", { ascending: true });
+
+      if (planError) {
+        console.error(planError);
+      }
+      if (planData) setMealPlan(planData);
+
+    } catch (error) {
+      console.error("Error generating plan:", error);
+      alert("Failed to generate plan. Ensure backend is running.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // Helper to group meals by day
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const mealsByDay = (dayIndex: number) => mealPlan.filter(m => m.day_of_week === dayIndex);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
-      {/* Navbar / Header */}
-      <nav className="bg-white dark:bg-gray-800 shadow-sm">
+      {/* Navbar */}
+      <nav className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <h1 className="text-xl font-bold text-green-600">Meal Planner</h1>
@@ -234,7 +299,125 @@ export default function Dashboard() {
           )}
 
         </div>
+
+        {/* Meal Plan Section */}
+        <div className="px-4 py-8 sm:px-0 border-t border-gray-200 dark:border-gray-700 mt-8">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Your Weekly Plan</h2>
+            <button
+              onClick={handleGeneratePlan}
+              disabled={generating || !targets}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+            >
+              {generating ? "Generating..." : "Generate Meal Plan"}
+            </button>
+          </div>
+
+          <div className="space-y-8">
+            {days.map((dayName, index) => {
+              const dailyMeals = mealsByDay(index);
+              if (dailyMeals.length === 0) return null;
+
+              return (
+                <div key={dayName} className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg">
+                  <div className="px-4 py-5 border-b border-gray-200 dark:border-gray-700 sm:px-6">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+                      {dayName}
+                    </h3>
+                  </div>
+                  <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {dailyMeals.map((meal) => (
+                      <li key={meal.id} onClick={() => setSelectedMeal(meal)} className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition">
+                        <div className="px-4 py-4 sm:px-6 flex items-center">
+                          <div className="flex-shrink-0 h-16 w-16">
+                            <img className="h-16 w-16 rounded object-cover" src={meal.image_url || "https://spoonacular.com/recipeImages/default.jpg"} alt={meal.recipe_title} />
+                          </div>
+                          <div className="ml-4 flex-1">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium text-green-600 truncate capitalize">
+                                {meal.meal_type}
+                              </p>
+                              <div className="ml-2 flex-shrink-0 flex">
+                                <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                  {meal.calories} kcal
+                                </p>
+                              </div>
+                            </div>
+                            <div className="mt-2 sm:flex sm:justify-between">
+                              <div className="sm:flex">
+                                <p className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                  {meal.recipe_title}
+                                </p>
+                              </div>
+                              <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400 sm:mt-0">
+                                <p>Protein: {meal.protein_g}g</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+
+            {mealPlan.length === 0 && !generating && (
+              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                No meal plan generated yet. Click the button above to start!
+              </div>
+            )}
+          </div>
+        </div>
+
       </main>
+
+      {/* Meal Details Modal */}
+      {selectedMeal && (
+        <div className="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setSelectedMeal(null)}></div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="modal-title">
+                      {selectedMeal.recipe_title}
+                    </h3>
+                    <div className="mt-4">
+                      <img src={selectedMeal.image_url || "https://spoonacular.com/recipeImages/default.jpg"} alt={selectedMeal.recipe_title} className="w-full h-48 object-cover rounded-md mb-4" />
+                      <div className="grid grid-cols-2 gap-4 text-sm text-gray-500 dark:text-gray-300">
+                        <div>
+                          <span className="font-bold block">Calories</span>
+                          {selectedMeal.calories} kcal
+                        </div>
+                        <div>
+                          <span className="font-bold block">Protein</span>
+                          {selectedMeal.protein_g} g
+                        </div>
+                        <div>
+                          <span className="font-bold block">Ready In</span>
+                          {selectedMeal.ready_in_minutes || "N/A"} min
+                        </div>
+                        <div>
+                          <span className="font-bold block">Servings</span>
+                          {selectedMeal.servings || "N/A"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button type="button" className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm" onClick={() => setSelectedMeal(null)}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

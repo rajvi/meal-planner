@@ -41,6 +41,9 @@ CREATE TABLE meal_plans (
   calories INTEGER,
   protein_g INTEGER,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  image_url TEXT
+  ready_in_minutes INTEGER
+  servings INTEGER
 );
 
 -- Enable Row Level Security (should already be enabled, but good to ensure)
@@ -78,10 +81,29 @@ CREATE POLICY "Users can update their own daily targets"
 ON daily_targets FOR UPDATE
 USING ( auth.uid() = user_id );
 
--- Allow users to select (read) their OWN daily targets
-CREATE POLICY "Users can view their own daily targets"
-ON daily_targets FOR SELECT
+-- Enable RLS for meal_plans
+ALTER TABLE meal_plans ENABLE ROW LEVEL SECURITY;
+
+-- Allow users to view their own meal plans
+CREATE POLICY "Users can view their own meal plans"
+ON meal_plans FOR SELECT
 USING ( auth.uid() = user_id );
+
+-- Allow users to insert their own meal plans (if needing frontend creation)
+CREATE POLICY "Users can insert their own meal plans"
+ON meal_plans FOR INSERT
+WITH CHECK ( auth.uid() = user_id );
+
+-- Allow users to update their own meal plans
+CREATE POLICY "Users can update their own meal plans"
+ON meal_plans FOR UPDATE
+USING ( auth.uid() = user_id );
+
+-- Allow users to delete their own meal plans
+CREATE POLICY "Users can delete their own meal plans"
+ON meal_plans FOR DELETE
+USING ( auth.uid() = user_id );
+
 
 
 -- Optional: If you need to verify it worked, you can't really "verify" RLS easily without trying to insert again from the app.
