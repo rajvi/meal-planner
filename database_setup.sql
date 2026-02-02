@@ -11,7 +11,7 @@ CREATE TABLE profiles (
   age INTEGER,
   height_cm FLOAT,
   weight_kg FLOAT,
-  activity_level TEXT CHECK (activity_level IN ('sedentary', 'lightly_active', 'moderately_active', 'very_active', 'extra_active')),
+  activity_level TEXT CHECK (activity_level IN ('inactive', 'low_active', 'active', 'very_active')),
   fitness_goal TEXT CHECK (fitness_goal IN ('weight_loss', 'maintenance', 'muscle_gain'))
 );
 
@@ -35,15 +35,15 @@ CREATE TABLE meal_plans (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   day_of_week INTEGER CHECK (day_of_week BETWEEN 0 AND 6), -- 0=Sunday
-  meal_type TEXT CHECK (meal_type IN ('breakfast', 'lunch', 'dinner', 'snack')),
+  meal_type TEXT CHECK (meal_type IN ('breakfast', 'am_snack', 'lunch', 'pm_snack', 'dinner', 'dessert', 'snack')),
   recipe_id_external INTEGER, -- The ID from Spoonacular
   recipe_title TEXT,
   calories INTEGER,
   protein_g INTEGER,
+  image_url TEXT,
+  ready_in_minutes INTEGER,
+  servings INTEGER,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-  image_url TEXT
-  ready_in_minutes INTEGER
-  servings INTEGER
 );
 
 -- Enable Row Level Security (should already be enabled, but good to ensure)

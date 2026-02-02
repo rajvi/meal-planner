@@ -115,8 +115,29 @@ export default function Dashboard() {
   };
 
   // Helper to group meals by day
+  // Helper to group meals by day
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const mealsByDay = (dayIndex: number) => mealPlan.filter(m => m.day_of_week === dayIndex);
+  const mealOrder = ['breakfast', 'am_snack', 'lunch', 'pm_snack', 'dinner', 'dessert', 'snack'];
+
+  const mealsByDay = (dayIndex: number) => {
+    return mealPlan
+      .filter(m => m.day_of_week === dayIndex)
+      .sort((a, b) => {
+        const indexA = mealOrder.indexOf(a.meal_type.toLowerCase());
+        const indexB = mealOrder.indexOf(b.meal_type.toLowerCase());
+        const rankA = indexA === -1 ? 99 : indexA;
+        const rankB = indexB === -1 ? 99 : indexB;
+        return rankA - rankB;
+      });
+  };
+
+  const formatMealType = (type: string) => {
+    switch (type) {
+      case 'am_snack': return 'AM Snack';
+      case 'pm_snack': return 'PM Snack';
+      default: return type.charAt(0).toUpperCase() + type.slice(1);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
@@ -334,8 +355,8 @@ export default function Dashboard() {
                           </div>
                           <div className="ml-4 flex-1">
                             <div className="flex items-center justify-between">
-                              <p className="text-sm font-medium text-green-600 truncate capitalize">
-                                {meal.meal_type}
+                              <p className="text-sm font-medium text-green-600 truncate">
+                                {formatMealType(meal.meal_type)}
                               </p>
                               <div className="ml-2 flex-shrink-0 flex">
                                 <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
