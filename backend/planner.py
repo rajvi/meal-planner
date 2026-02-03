@@ -52,12 +52,28 @@ def extract_nutrients(recipe: Dict) -> Dict:
         "title": recipe["title"],
         "image": recipe.get("image"),
         "readyInMinutes": recipe.get("readyInMinutes"),
+        "preparationMinutes": recipe.get("preparationMinutes"),
+        "cookingMinutes": recipe.get("cookingMinutes"),
         "servings": recipe.get("servings"),
+        "summary": recipe.get("summary"),
+        "ingredients": [
+            {"name": i["name"], "amount": i["amount"], "unit": i["unit"]}
+            for i in recipe.get("extendedIngredients", [])
+        ],
+        "instructions": recipe.get("instructions") or "",
         "calories": 0,
         "protein": 0,
         "fat": 0,
         "carbs": 0
     }
+
+    # Fallback for instructions if blank
+    if not data["instructions"] and recipe.get("analyzedInstructions"):
+        steps = []
+        for instruction_set in recipe.get("analyzedInstructions", []):
+            for step in instruction_set.get("steps", []):
+                steps.append(f"<p>{step.get('step', '')}</p>")
+        data["instructions"] = "".join(steps)
     
     for n in nutrients:
         if n["name"] == "Calories":
