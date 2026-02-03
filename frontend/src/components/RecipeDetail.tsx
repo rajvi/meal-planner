@@ -38,6 +38,7 @@ export default function RecipeDetail() {
         async function fetchRecipe() {
             if (!user || !id) return;
 
+            // 1. Fetch from Supabase
             const { data, error } = await supabase
                 .from("meal_plans")
                 .select("*")
@@ -48,9 +49,28 @@ export default function RecipeDetail() {
             if (error) {
                 console.error("Error fetching recipe:", error);
                 navigate("/dashboard");
+                return;
+            }
+
+            // 2. If no instructions, fetch from backend (Lazy Load)
+            if (!data.instructions) {
+                console.log("No instructions found, lazy loading from backend...");
+                try {
+                    const response = await fetch(`http://127.0.0.1:8000/api/recipe-details/${id}`);
+                    if (response.ok) {
+                        const fullData = await response.json();
+                        setRecipe(fullData);
+                    } else {
+                        setRecipe(data); // Fallback to partial data if backend fails
+                    }
+                } catch (err) {
+                    console.error("Lazy load failed:", err);
+                    setRecipe(data);
+                }
             } else {
                 setRecipe(data);
             }
+
             setLoading(false);
         }
 
