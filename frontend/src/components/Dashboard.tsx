@@ -348,7 +348,7 @@ export default function Dashboard() {
                   </div>
                   <ul className="divide-y divide-gray-200 dark:divide-gray-700">
                     {dailyMeals.map((meal) => (
-                      <li key={meal.id} onClick={() => setSelectedMeal(meal)} className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition">
+                      <li key={meal.id} onClick={() => navigate(`/recipe/${meal.id}`)} className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition">
                         <div className="px-4 py-4 sm:px-6 flex items-center">
                           <div className="flex-shrink-0 h-16 w-16">
                             <img className="h-16 w-16 rounded object-cover" src={meal.image_url || "https://spoonacular.com/recipeImages/default.jpg"} alt={meal.recipe_title} />

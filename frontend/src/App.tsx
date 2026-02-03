@@ -4,6 +4,7 @@ import SignIn from "./components/Signin"
 import SignUp from "./components/Signup"
 import Dashboard from "./components/Dashboard"
 import Intake from "./components/Intake"
+import RecipeDetail from "./components/RecipeDetail"
 
 export default function App() {
   const { session, loading } = useAuth()
@@ -33,6 +34,10 @@ export default function App() {
       <Route
         path="/intake"
         element={session ? <Intake /> : <Navigate to="/signin" replace />}
+      />
+      <Route
+        path="/recipe/:id"
+        element={session ? <RecipeDetail /> : <Navigate to="/signin" replace />}
       />
 
       {/* Catch‑all redirect */}

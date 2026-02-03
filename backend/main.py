@@ -55,9 +55,16 @@ async def generate_plan(user_id: str):
             "recipe_title": item["title"],
             "calories": item["calories"],
             "protein_g": item["protein"],
+            "fat_g": item["fat"],
+            "carbs_g": item["carbs"],
             "image_url": item["image"],
             "ready_in_minutes": item.get("readyInMinutes"),
-            "servings": item.get("servings")
+            "preparation_minutes": item.get("preparationMinutes"),
+            "cooking_minutes": item.get("cookingMinutes"),
+            "servings": item.get("servings"),
+            "ingredients": item.get("ingredients"),
+            "instructions": item.get("instructions"),
+            "summary": item.get("summary")
         })
         
     insert_res = supabase.table("meal_plans").insert(rows).execute()
