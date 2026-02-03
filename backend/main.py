@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from config import supabase
-from planner import generate_perfect_week
+from planner import generate_perfect_week, fetch_single_recipe
 
 app = FastAPI()
 
@@ -57,16 +57,53 @@ async def generate_plan(user_id: str):
             "protein_g": item["protein"],
             "fat_g": item["fat"],
             "carbs_g": item["carbs"],
-            "image_url": item["image"],
-            "ready_in_minutes": item.get("readyInMinutes"),
-            "preparation_minutes": item.get("preparationMinutes"),
-            "cooking_minutes": item.get("cookingMinutes"),
-            "servings": item.get("servings"),
-            "ingredients": item.get("ingredients"),
-            "instructions": item.get("instructions"),
-            "summary": item.get("summary")
+            "image_url": item["image"]
         })
         
     insert_res = supabase.table("meal_plans").insert(rows).execute()
     
     return {"status": "success", "count": len(rows)}
+
+@app.get("/api/recipe-details/{meal_id}")
+def get_recipe_details(meal_id: str):
+    """
+    Fetch full recipe details. If missing in DB, fetch from Spoonacular and cache.
+    """
+    # 1. Check DB first
+    res = supabase.table("meal_plans").select("*").eq("id", meal_id).single().execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Meal not found")
+    
+    meal = res.data
+    
+    # 2. If instructions already exist, return it
+    if meal.get("instructions"):
+        return meal
+        
+    # 3. Else, fetch from Spoonacular
+    print(f"Lazy loading details for recipe {meal['recipe_id_external']}...")
+    details = fetch_single_recipe(meal["recipe_id_external"])
+    
+    if not details:
+        raise HTTPException(status_code=500, detail="Could not fetch recipe details")
+        
+    # 4. Update DB (Cache)
+    update_data = {
+        "ready_in_minutes": details.get("readyInMinutes"),
+        "preparation_minutes": details.get("preparationMinutes"),
+        "cooking_minutes": details.get("cookingMinutes"),
+        "servings": details.get("servings"),
+        "ingredients": details.get("ingredients"),
+        "instructions": details.get("instructions"),
+        "summary": details.get("summary"),
+        # Update macros just in case they were zero or slightly different
+        "calories": details.get("calories"),
+        "protein_g": details.get("protein"),
+        "fat_g": details.get("fat"),
+        "carbs_g": details.get("carbs")
+    }
+    
+    supabase.table("meal_plans").update(update_data).eq("id", meal_id).execute()
+    
+    # Return merged data
+    return {**meal, **update_data}

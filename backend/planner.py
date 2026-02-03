@@ -28,10 +28,10 @@ def fetch_recipes(query: str, meal_type: str, number: int = 20) -> List[Dict]:
         "diet": "vegan",
         "number": number,
         "maxAlcohol": 0,
-        "addRecipeInformation": True,
+        "addRecipeInformation": False,
         "addRecipeNutrition": True,
-        "fillIngredients": True,
-        "instructionsRequired": True,
+        "fillIngredients": False,
+        "instructionsRequired": False,
         "sort": "random" # Get different results each time
     }
     
@@ -51,29 +51,13 @@ def extract_nutrients(recipe: Dict) -> Dict:
         "id": recipe["id"],
         "title": recipe["title"],
         "image": recipe.get("image"),
-        "readyInMinutes": recipe.get("readyInMinutes"),
-        "preparationMinutes": recipe.get("preparationMinutes"),
-        "cookingMinutes": recipe.get("cookingMinutes"),
-        "servings": recipe.get("servings"),
-        "summary": recipe.get("summary"),
-        "ingredients": [
-            {"name": i["name"], "amount": i["amount"], "unit": i["unit"]}
-            for i in recipe.get("extendedIngredients", [])
-        ],
-        "instructions": recipe.get("instructions") or "",
+        "readyInMinutes": recipe.get("readyInMinutes", 0),
+        "servings": recipe.get("servings", 0),
         "calories": 0,
         "protein": 0,
         "fat": 0,
         "carbs": 0
     }
-
-    # Fallback for instructions if blank
-    if not data["instructions"] and recipe.get("analyzedInstructions"):
-        steps = []
-        for instruction_set in recipe.get("analyzedInstructions", []):
-            for step in instruction_set.get("steps", []):
-                steps.append(f"<p>{step.get('step', '')}</p>")
-        data["instructions"] = "".join(steps)
     
     for n in nutrients:
         if n["name"] == "Calories":
@@ -304,3 +288,62 @@ def generate_perfect_week(targets: Dict[str, float]) -> List[Dict]:
                     break
         
     return final_plan
+
+def fetch_single_recipe(recipe_id: int) -> Dict:
+    """
+    Fetch full details for a single recipe from Spoonacular.
+    Used for lazy loading instructions and ingredients.
+    """
+    if not SPOONACULAR_API_KEY:
+        raise Exception("Spoonacular API Key missing")
+        
+    url = f"https://api.spoonacular.com/recipes/{recipe_id}/information"
+    params = {
+        "apiKey": SPOONACULAR_API_KEY,
+        "includeNutrition": True
+    }
+    
+    response = requests.get(url, params=params)
+    if response.status_code != 200:
+        print(f"Error fetching recipe {recipe_id}: {response.text}")
+        return {}
+        
+    recipe = response.json()
+    
+    # Extract detailed fields using similar logic to extract_nutrients but including more
+    nutrients = recipe.get("nutrition", {}).get("nutrients", [])
+    
+    data = {
+        "title": recipe["title"],
+        "image": recipe.get("image"),
+        "readyInMinutes": recipe.get("readyInMinutes"),
+        "preparationMinutes": recipe.get("preparationMinutes"),
+        "cookingMinutes": recipe.get("cookingMinutes"),
+        "servings": recipe.get("servings"),
+        "summary": recipe.get("summary"),
+        "ingredients": [
+            {"name": i["name"], "amount": i["amount"], "unit": i["unit"]}
+            for i in recipe.get("extendedIngredients", [])
+        ],
+        "instructions": recipe.get("instructions") or "",
+        "calories": 0,
+        "protein": 0,
+        "fat": 0,
+        "carbs": 0
+    }
+
+    # Fallback for instructions
+    if not data["instructions"] and recipe.get("analyzedInstructions"):
+        steps = []
+        for instruction_set in recipe.get("analyzedInstructions", []):
+            for step in instruction_set.get("steps", []):
+                steps.append(f"<p>{step.get('step', '')}</p>")
+        data["instructions"] = "".join(steps)
+
+    for n in nutrients:
+        if n["name"] == "Calories": data["calories"] = round(n["amount"])
+        elif n["name"] == "Protein": data["protein"] = round(n["amount"])
+        elif n["name"] == "Fat": data["fat"] = round(n["amount"])
+        elif n["name"] == "Carbohydrates": data["carbs"] = round(n["amount"])
+        
+    return data
