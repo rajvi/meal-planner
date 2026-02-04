@@ -56,7 +56,10 @@ def extract_nutrients(recipe: Dict) -> Dict:
         "calories": 0,
         "protein": 0,
         "fat": 0,
-        "carbs": 0
+        "carbs": 0,
+        "iron_mg": 0,
+        "calcium_mg": 0,
+        "vitamin_b12_mcg": 0
     }
     
     for n in nutrients:
@@ -68,6 +71,12 @@ def extract_nutrients(recipe: Dict) -> Dict:
             data["fat"] = round(n["amount"])
         elif n["name"] == "Carbohydrates":
             data["carbs"] = round(n["amount"])
+        elif n["name"] == "Iron":
+            data["iron_mg"] = n["amount"]
+        elif n["name"] == "Calcium":
+            data["calcium_mg"] = n["amount"]
+        elif n["name"] == "Vitamin B12":
+            data["vitamin_b12_mcg"] = n["amount"]
             
     return data
 
@@ -329,7 +338,10 @@ def fetch_single_recipe(recipe_id: int) -> Dict:
         "calories": 0,
         "protein": 0,
         "fat": 0,
-        "carbs": 0
+        "carbs": 0,
+        "iron_mg": 0,
+        "calcium_mg": 0,
+        "vitamin_b12_mcg": 0
     }
 
     # Fallback for instructions
@@ -345,5 +357,8 @@ def fetch_single_recipe(recipe_id: int) -> Dict:
         elif n["name"] == "Protein": data["protein"] = round(n["amount"])
         elif n["name"] == "Fat": data["fat"] = round(n["amount"])
         elif n["name"] == "Carbohydrates": data["carbs"] = round(n["amount"])
+        elif n["name"] == "Iron": data["iron_mg"] = n["amount"]
+        elif n["name"] == "Calcium": data["calcium_mg"] = n["amount"]
+        elif n["name"] == "Vitamin B12": data["vitamin_b12_mcg"] = n["amount"]
         
     return data
