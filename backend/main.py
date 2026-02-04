@@ -57,6 +57,9 @@ async def generate_plan(user_id: str):
             "protein_g": item["protein"],
             "fat_g": item["fat"],
             "carbs_g": item["carbs"],
+            "iron_mg": item.get("iron_mg", 0),
+            "calcium_mg": item.get("calcium_mg", 0),
+            "vitamin_b12_mcg": item.get("vitamin_b12_mcg", 0),
             "image_url": item["image"]
         })
         
@@ -96,11 +99,14 @@ def get_recipe_details(meal_id: str):
         "ingredients": details.get("ingredients"),
         "instructions": details.get("instructions"),
         "summary": details.get("summary"),
-        # Update macros just in case they were zero or slightly different
+        # Update macros & micros
         "calories": details.get("calories"),
         "protein_g": details.get("protein"),
         "fat_g": details.get("fat"),
-        "carbs_g": details.get("carbs")
+        "carbs_g": details.get("carbs"),
+        "iron_mg": details.get("iron_mg", 0),
+        "calcium_mg": details.get("calcium_mg", 0),
+        "vitamin_b12_mcg": details.get("vitamin_b12_mcg", 0)
     }
     
     supabase.table("meal_plans").update(update_data).eq("id", meal_id).execute()
